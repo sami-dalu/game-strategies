@@ -36,8 +36,27 @@ module Exercises = struct
   ;;
 
   let print_game (game : Game.t) =
-    ignore game;
-    print_endline ""
+    let len = match game.game_kind with 
+    | Game.Game_kind.Tic_tac_toe -> 3
+    | _ -> 15
+  in
+    let rows = List.range 0 len in
+    let cols = List.range 0 len in
+    List.iter rows ~f:(fun r -> 
+      List.iter cols ~f:(fun c -> 
+      let printing_char = 
+        match (Map.find game.board {Game.Position.row = r; column = c}) with
+        | None -> " "
+        | Some p ->
+           match p with 
+            | X -> "X"
+            | O -> "O"
+        in 
+        if (c <> len-1 ) then print_string (printing_char ^ " | ")  else print_string (printing_char ^ "\n")
+      );
+      if r <> len-1 then 
+      print_string "---------\n";
+    )
   ;;
 
   let%expect_test "print_win_for_x" =
@@ -68,14 +87,157 @@ module Exercises = struct
 
   (* Exercise 1 *)
   let available_moves (game : Game.t) : Game.Position.t list =
-    ignore game;
-    failwith "Implement me!"
+    let len = match game.game_kind with 
+      | Game.Game_kind.Tic_tac_toe -> 3
+      | _ -> 15
+in
+  let rows = List.range 0 len in
+  let cols = List.range 0 len in
+  let positions_grid = List.map rows ~f:(fun r -> 
+    List.map cols ~f:(fun c -> {Game.Position.row = r; column = c}
+      )
+    )
+  in
+  let positions_list = List.concat positions_grid in
+   List.filter positions_list ~f:(fun pos -> not (List.exists (Map.keys game.board) ~f:(fun p -> Game.Position.equal p pos)))
   ;;
+
+  (* let rec find_streak piece_list last_piece streak (game : Game.t) = (
+    (* if streak = Game.Game_kind.win_length game.game_kind then
+      Some (Game.Evaluation.Game_over {winner = Some last_piece})
+    else if List.length piece_list < Game.Game_kind.win_length game.game_kind then None
+    else (
+    match piece_list with
+    | next_piece::rest -> 
+      if Option.is_some next_piece && (Game.Piece.equal (Option.value_exn next_piece) last_piece) then find_streak rest (Option.value_exn next_piece) (streak+1) game else find_streak rest next_piece 0 game
+    | [] -> None *)
+    List.map piece_list ~f:(
+      fun p -> 
+        match piece_list with 
+        
+    )
+    )
+    ;; *)
 
   (* Exercise 2 *)
   let evaluate (game : Game.t) : Game.Evaluation.t =
-    ignore game;
-    failwith "Implement me!"
+    (* let rec row_check r c (g : Game.t) (piece : Game.Piece.t) cons_count = 
+      if cons_count = (Game.Game_kind.win_length g.game_kind) then 
+        Some (Game.Evaluation.Game_over {winner = Some piece})
+    else (
+      let p = Map.find g.board {Game.Position.row = r; column = c} in
+      if Option.is_some p && (Game.Piece.equal (Option.value_exn p) piece && c < Game.Game_kind.board_length g.game_kind) 
+        then (row_check r (c+1) g piece (cons_count + 1))
+    else
+      row_check r (c+1) g piece (0)
+    )
+    in
+    if List.is_empty (available_moves game) then
+      Game.Evaluation.Game_over {winner = None}
+    else
+      let len = match game.game_kind with 
+      | Game.Game_kind.Tic_tac_toe -> 3
+      | _ -> 15
+    in 
+    let rows = List.range 0 len in
+    List.find (List.map rows ~f(fun row -> row_check row )) *)
+    (* let row_check r = 
+      let len = match game.game_kind with 
+      | Game.Game_kind.Tic_tac_toe -> 3
+      | _ -> 15
+    in 
+      let rows = List.range 0 len in 
+      let pieces = List.map (List.range 0 len) ~f:(fun c -> Map.find game.board {Game.Position.row = r; column = c})
+  in *)
+  let possible_illegal_move = List.find (Map.keys game.board) ~f:(fun pos -> 
+    match pos with 
+    | {Game.Position.row = r; column = c} -> r < 0 || c < 0 || r>= Game.Game_kind.board_length game.game_kind || c>= Game.Game_kind.board_length game.game_kind
+    ) in
+  if Option.is_some possible_illegal_move then
+    Game.Evaluation.Illegal_move
+  else
+  let find_streak (piece_arr: Game.Piece.t option array) game = (
+    let streak_start = Array.mapi piece_arr ~f:(fun index p -> p, index + Game.Game_kind.win_length game -1 < Game.Game_kind.board_length game &&
+     Option.is_some (List.all_equal ~equal:(fun p1 p2 -> Option.is_some p1 && Option.is_some p2 && Game.Piece.equal (Option.value_exn p1) (Option.value_exn p2))
+     (List.of_array (Array.slice piece_arr index (index + Game.Game_kind.win_length game))))
+     )
+  in 
+  Array.find streak_start ~f:(fun (_p, b) -> b)
+  )
+  in 
+  let len = match game.game_kind with 
+      | Game.Game_kind.Tic_tac_toe -> 3
+      | _ -> 15
+in
+  let rows = List.range 0 len in
+  let cols = List.range 0 len in
+  let piece_grid = List.map rows ~f:(fun r -> 
+    List.map cols ~f:(fun c -> let pos = {Game.Position.row = r; column = c} in
+      Map.find game.board pos
+      )
+    ) 
+  in
+  let streak_row = List.find piece_grid 
+  ~f:(fun row_pieces ->
+    Option.is_some (find_streak (Array.of_list row_pieces) game.game_kind)
+    )
+  in
+  if (Option.is_some streak_row) then
+    let p, _ = Option.value_exn (find_streak (Array.of_list (Option.value_exn streak_row)) game.game_kind) in
+    Game.Evaluation.Game_over {winner = p}
+  else
+    let columns = List.map cols ~f:(fun c -> List.map rows ~f:(fun r -> let pos = {Game.Position.row = r; column = c} in
+      Map.find game.board pos
+    ))
+  in
+  let streak_col = List.find columns ~f:(fun col_pieces ->
+    Option.is_some (find_streak (Array.of_list col_pieces) game.game_kind)
+    )
+  in
+  if (Option.is_some streak_col) then
+    let p2, _ = Option.value_exn (find_streak (Array.of_list (Option.value_exn streak_col)) game.game_kind) in
+    Game.Evaluation.Game_over {winner = p2}
+  else
+    let get_diagonals r c offset = 
+      match game.game_kind with 
+      | Tic_tac_toe -> [Map.find game.board {Game.Position.row = r; column = c}; Map.find game.board {Game.Position.row = r+1; column = c+offset}; Map.find game.board {Game.Position.row = r+2; column = c+2*offset}]
+      | Omok -> [Map.find game.board {Game.Position.row = r; column = c}; Map.find game.board {Game.Position.row = r+1; column = c+offset}; Map.find game.board {Game.Position.row = r+2*offset; column = c+2*offset};
+      Map.find game.board {Game.Position.row = r+3; column = c+3*offset}; Map.find game.board {Game.Position.row = r+4; column = c+4*offset};]
+    in
+    let coordinates = List.concat_map rows ~f:(fun r-> List.map cols ~f:(fun c-> (r, c))) in
+    let diagonal_start_bl = List.find coordinates ~f:(fun (r, c) -> let diagonal_list = (get_diagonals r c (-1)) in 
+    let diagonal_array = List.to_array diagonal_list in
+    Option.is_some (find_streak diagonal_array game.game_kind)
+    ) 
+  in
+    if Option.is_some diagonal_start_bl then
+      let r, c = Option.value_exn diagonal_start_bl in
+      let piece = Map.find_exn game.board {Game.Position.row = r; column = c} in
+      Game.Evaluation.Game_over {winner = Some piece}
+    else
+    let diagonal_start_br = List.find coordinates ~f:(fun (r, c) -> let diagonal_list = (get_diagonals r c (1)) in 
+    let diagonal_array2 = List.to_array diagonal_list in
+    Option.is_some (find_streak diagonal_array2 game.game_kind)
+    ) 
+  in
+    if Option.is_some diagonal_start_br then
+      let r2, c2 = Option.value_exn diagonal_start_br in
+      let piece = Map.find_exn game.board {Game.Position.row = r2; column = c2} in
+      Game.Evaluation.Game_over {winner = Some piece}
+    else if List.is_empty (available_moves game) then
+      Game.Evaluation.Game_over {winner = None}
+    else
+      Game.Evaluation.Game_continues
+
+  (* let len = match game.game_kind with 
+      | Game.Game_kind.Tic_tac_toe -> 3
+      | _ -> 15
+  in
+  let rows = Array.range 0 len in
+  let cols = Array.range 0 len in  *)
+  (* let piece_lists = List.map rows ~f:(fun r -> )
+  Array.map *)
+
   ;;
 
   (* Exercise 3 *)
@@ -111,7 +273,7 @@ module Exercises = struct
        fun () ->
          let evaluation = evaluate win_for_x in
          print_s [%sexp (evaluation : Game.Evaluation.t)];
-         let evaluation = evaluate win_for_x in
+         let evaluation = evaluate non_win in
          print_s [%sexp (evaluation : Game.Evaluation.t)];
          return ())
   ;;
@@ -160,20 +322,46 @@ module Exercises = struct
   ;;
 end
 
+(* module Response = struct
+  type t = { piece : Game.Piece.t; pos : Game.Position.t} [@@deriving sexp_of, bin_io]
+end *)
+
+module Echo = struct
+  module Query = struct
+    type t = string [@@deriving sexp_of, bin_io]
+  end
+  
+  module Response = struct
+    type t = { time : Time_ns_unix.t; message : string } [@@deriving sexp_of, bin_io]
+  end
+end
+let handle (_client : unit ) (_query : Rpcs.Take_turn.Query.t) =
+  let response = {Rpcs.Take_turn.Response.piece = X; position = {row =0; column = 0}} in
+  return response ;;
 let command_play =
   Command.async
     ~summary:"Play"
     (let%map_open.Command () = return ()
-     and controller =
-       flag "-controller" (required host_and_port) ~doc:"_ host_and_port of controller"
+     (* and _controller =
+       flag "-controller" (required host_and_port) ~doc:"_ host_and_port of controller" *)
      and port = flag "-port" (required int) ~doc:"_ port to listen on" in
+     let implementations = Rpc.Implementations.create_exn
+     ~on_unknown_rpc:`Close_connection
+     ~implementations:[ Rpc.Rpc.implement Rpcs.Take_turn.rpc handle;]
+in
      fun () ->
-       (* We should start listing on the supplied [port], ready to handle incoming
-          queries for [Take_turn] and [Game_over]. We should also connect to the
-          controller and send a [Start_game] to initiate the game. *)
-       ignore controller;
-       ignore port;
-       return ())
+       let%bind server =
+           Rpc.Connection.serve
+             ~implementations
+             ~initial_connection_state:(fun _client_identity _client_addr ->
+               (* This constructs the "client" values which are passed to the
+                  implementation function above. We're just using unit for now. *)
+               ())
+             ~where_to_listen:(Tcp.Where_to_listen.of_port port)
+             ()
+         in
+         Tcp.Server.close_finished server
+       )
 ;;
 
 let command =
