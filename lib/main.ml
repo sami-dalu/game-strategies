@@ -25,7 +25,7 @@ module Exercises = struct
     |> place_piece ~piece:Piece.O ~position:{ Position.row = 0; column = 1 }
     |> place_piece ~piece:Piece.X ~position:{ Position.row = 1; column = 2 }
   ;;
-
+(* hi *)
   let non_win =
     let open Game in
     empty_game
