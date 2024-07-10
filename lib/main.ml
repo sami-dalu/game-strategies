@@ -403,6 +403,14 @@ module Exercises = struct
       !min_val)
   ;;
 
+  let choose_move game my_piece = 
+    let considered_moves =
+      available_moves_that_do_not_immediately_lose ~me:my_piece game in
+    if List.is_empty considered_moves then List.hd_exn (available_moves game)
+    else
+    let champ_pos = ref (List.hd_exn considered_moves) in
+    
+    ;;
   let exercise_one =
     Command.async
       ~summary:"Exercise 1: Where can I move?"
@@ -507,9 +515,11 @@ module Echo = struct
 end
 (* edit *)
 
-let handle (_client : unit) (_query : Rpcs.Take_turn.Query.t) =
+let handle (_client : unit) (query : Rpcs.Take_turn.Query.t) =
   let response =
-    { Rpcs.Take_turn.Response.piece = X; position = { row = 0; column = 0 } }
+    { Rpcs.Take_turn.Response.piece = query.you_play
+    ; position = { row = 0; column = 0 }
+    }
   in
   return response
 ;;
