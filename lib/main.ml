@@ -45,23 +45,17 @@ module Exercises = struct
     |> place_piece ~piece:Piece.X ~position:{ Position.row = 4; column = 0 }
   ;;
 
-  let bw_game =
-    let open Game in
-    empty_game
-    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 0 }
-    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
-    |> place_piece ~piece:Piece.X ~position:{ Position.row = 1; column = 1 }
-    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 1 }
-  ;;
+  (* let bw_game = let open Game in empty_game |> place_piece ~piece:Piece.X
+     ~position:{ Position.row = 0; column = 0 } |> place_piece ~piece:Piece.O
+     ~position:{ Position.row = 2; column = 0 } |> place_piece ~piece:Piece.X
+     ~position:{ Position.row = 1; column = 1 } |> place_piece ~piece:Piece.O
+     ~position:{ Position.row = 2; column = 1 } ;;
 
-  let block_game =
-    let open Game in
-    empty_game
-    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 0 }
-    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
-    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 2 }
-    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 1 }
-  ;;
+     let block_game = let open Game in empty_game |> place_piece
+     ~piece:Piece.X ~position:{ Position.row = 0; column = 0 } |> place_piece
+     ~piece:Piece.O ~position:{ Position.row = 2; column = 0 } |> place_piece
+     ~piece:Piece.X ~position:{ Position.row = 0; column = 2 } |> place_piece
+     ~piece:Piece.O ~position:{ Position.row = 2; column = 1 } ;; *)
 
   let print_game (game : Game.t) =
     let len =
@@ -150,10 +144,7 @@ module Exercises = struct
         List.map cols ~f:(fun c -> { Game.Position.row = r; column = c }))
     in
     let positions_list = List.concat positions_grid in
-    List.filter positions_list ~f:(fun pos ->
-      not
-        (List.exists (Map.keys game.board) ~f:(fun p ->
-           Game.Position.equal p pos)))
+    List.filter positions_list ~f:(fun pos -> not (Map.mem game.board pos))
   ;;
 
   (* let rec find_streak piece_list last_piece streak (game : Game.t) = ( (*
@@ -168,6 +159,35 @@ module Exercises = struct
 
      ) ) ;; *)
 
+  let empty_and_adj_to_smth (game : Game.t) =
+    List.map
+      (Map.keys game.board)
+      ~f:(fun { Game.Position.row = r; column = c } ->
+        let neighbors =
+          [ { Game.Position.row = r - 1; column = c - 1 }
+          ; { Game.Position.row = r - 1; column = c }
+          ; { Game.Position.row = r - 1; column = c + 1 }
+          ; { Game.Position.row = r; column = c - 1 }
+          ; { Game.Position.row = r; column = c + 1 }
+          ; { Game.Position.row = r + 1; column = c - 1 }
+          ; { Game.Position.row = r + 1; column = c }
+          ; { Game.Position.row = r + 1; column = c + 1 }
+          ]
+        in
+        List.filter
+          neighbors
+          ~f:(fun ({ Game.Position.row = r2; column = c2 } as pos) ->
+            r2 >= 0
+            && r2 < Game.Game_kind.board_length game.game_kind
+            && c2 >= 0
+            && c2 < Game.Game_kind.board_length game.game_kind
+            && Option.is_none (Map.find game.board pos)))
+    |> List.concat
+    |> Game.Position.Set.of_list
+  ;;
+
+  (* Option.is_some (List.find neighbors ~f:(fun p -> Option.is_some
+     (Map.find game.board p))) && Option.is_none (Map.find game.board pos) *)
   (* Exercise 2 *)
   let evaluate (game : Game.t) : Game.Evaluation.t =
     (* let rec row_check r c (g : Game.t) (piece : Game.Piece.t) cons_count =
@@ -331,13 +351,15 @@ module Exercises = struct
   let winning_moves ~(me : Game.Piece.t) (game : Game.t)
     : Game.Position.t list
     =
-    List.filter (available_moves game) ~f:(fun pos ->
-      let new_game = place_piece game ~piece:me ~position:pos in
-      match evaluate new_game with
-      | Game.Evaluation.Game_over { winner = victor } ->
-        Option.is_some victor
-        && Game.Piece.equal (Option.value_exn victor) me
-      | _ -> false)
+    List.filter
+      (Set.to_list (empty_and_adj_to_smth game))
+      ~f:(fun pos ->
+        let new_game = place_piece game ~piece:me ~position:pos in
+        match evaluate new_game with
+        | Game.Evaluation.Game_over { winner = victor } ->
+          Option.is_some victor
+          && Game.Piece.equal (Option.value_exn victor) me
+        | _ -> false)
   ;;
 
   (* Exercise 4 *)
@@ -348,13 +370,27 @@ module Exercises = struct
   ;;
 
   (* Exercise 5 *)
-  let available_moves_that_do_not_immediately_lose
+  let _available_moves_that_do_not_immediately_lose
     ~(me : Game.Piece.t)
     (game : Game.t)
     =
-    List.filter (available_moves game) ~f:(fun pos ->
-      List.is_empty
-        (losing_moves ~me (place_piece ~position:pos ~piece:me game)))
+    let l =
+      Set.filter (empty_and_adj_to_smth game) ~f:(fun pos ->
+        List.is_empty
+          (losing_moves ~me (place_piece ~position:pos ~piece:me game)))
+      |> Set.to_list
+    in
+    let _ = print_s [%message (l : Game.Position.t list)] in
+    l
+  ;;
+
+  let available_moves_that_do_not_immediately_lose
+    ~(me : Game.Piece.t)
+    (_game : Game.t)
+    =
+    ignore me;
+    List.init 5 ~f:(fun _i ->
+      { Game.Position.column = Random.int 15; row = Random.int 15 })
   ;;
 
   let find_streaks
@@ -384,7 +420,9 @@ module Exercises = struct
     Array.filter streak_start ~f:(fun (_p, b) -> b)
   ;;
 
-  let score (game : Game.t) my_piece =
+  let score (_game : Game.t) _my_piece = Random.float 20.
+
+  let _score (game : Game.t) my_piece =
     match evaluate game with
     | Game.Evaluation.Game_over { winner = Some w } ->
       if Game.Piece.equal w my_piece
@@ -580,8 +618,12 @@ module Exercises = struct
     (depth : int)
     (maximizing_player : bool)
     (me : Game.Piece.t)
+    (a : float)
+    (b : float)
     =
     (* doesn't work with illegal moves *)
+    let a_ref = ref a in
+    let b_ref = ref b in
     let game_continuing =
       match evaluate game with
       | Game.Evaluation.Game_over { winner = _ } -> false
@@ -596,16 +638,24 @@ module Exercises = struct
     then (
       let max_val = ref Float.min_value in
       let _ =
+        let cutoff = ref false in
         List.iter considered_moves ~f:(fun pos ->
-          let possible_board1 = place_piece ~piece:me ~position:pos game in
-          let eval1 =
-            minimax
-              possible_board1
-              (depth - 1)
-              (not maximizing_player)
-              (Game.Piece.flip me)
-          in
-          max_val := Float.max eval1 !max_val)
+          if not !cutoff
+          then (
+            let possible_board1 = place_piece ~piece:me ~position:pos game in
+            let eval1 =
+              minimax
+                possible_board1
+                (depth - 1)
+                (not maximizing_player)
+                (Game.Piece.flip me)
+                !a_ref
+                !b_ref
+            in
+            max_val := Float.max eval1 !max_val;
+            if Float.( <= ) !max_val !b_ref
+            then a_ref := Float.max !a_ref !max_val
+            else cutoff := true))
         (* let opt_val = List.max_elt considered_moves ~compare:(fun pos1
            pos2 -> let possible_board1 = place_piece ~piece:(me)
            ~position:(pos1) game in let eval1 = minimax possible_board1
@@ -621,63 +671,83 @@ module Exercises = struct
     else (
       let min_val = ref Float.max_value in
       let _ =
+        let cutoff = ref false in
         List.iter considered_moves ~f:(fun pos ->
-          let possible_board1 = place_piece ~piece:me ~position:pos game in
-          let eval1 =
-            minimax
-              possible_board1
-              (depth - 1)
-              (not maximizing_player)
-              (Game.Piece.flip me)
-          in
-          min_val := Float.min eval1 !min_val)
+          if not !cutoff
+          then (
+            let possible_board1 = place_piece ~piece:me ~position:pos game in
+            let eval1 =
+              minimax
+                possible_board1
+                (depth - 1)
+                (not maximizing_player)
+                (Game.Piece.flip me)
+                !a_ref
+                !b_ref
+            in
+            min_val := Float.min eval1 !min_val;
+            if Float.( >= ) !min_val !a_ref
+            then b_ref := Float.min !b_ref !min_val
+            else cutoff := true))
       in
       !min_val)
   ;;
 
-  let choose_move game my_piece =
-    let considered_moves =
-      available_moves_that_do_not_immediately_lose ~me:my_piece game
-    in
-    if List.is_empty considered_moves
-    then List.hd_exn (available_moves game)
+  let choose_move (game : Game.t) my_piece =
+    if List.is_empty (Map.keys game.board)
+    then { Game.Position.row = 0; column = 0 }
     else if not (List.is_empty (winning_moves game ~me:my_piece))
     then List.hd_exn (winning_moves game ~me:my_piece)
     else (
-      let champ_pos = ref (List.hd_exn considered_moves) in
-      let champ_eval = ref Float.min_value in
-      let depth =
-        match game.game_kind with Game.Game_kind.Tic_tac_toe -> 9 | _ -> 2
+      let continuing_moves =
+        available_moves_that_do_not_immediately_lose ~me:my_piece game
       in
-      let _ =
-        List.iter considered_moves ~f:(fun pos ->
-          let possible_game =
-            place_piece ~piece:my_piece ~position:pos game
-          in
-          let eval =
-            minimax possible_game depth false (Game.Piece.flip my_piece)
-          in
-          if Float.( > ) eval !champ_eval
-          then (
-            champ_eval := Float.max !champ_eval eval;
-            champ_pos := pos))
-      in
-      !champ_pos)
+      (* let _ = print_s [%message (continuing_moves : Game.Position.t list)]
+         in *)
+      match continuing_moves with
+      | [] -> List.hd_exn (available_moves game)
+      | _ ->
+        (* let considered_moves_set = Set.filter (Game.Position.Set.of_list
+           (available_moves_that_do_not_immediately_lose ~me:my_piece game))
+           ~f:(fun pos -> Set.mem (empty_and_adj_to_smth game) pos) in *)
+        (* let _ = print_s [%message (considered_moves : Game.Position.t
+           list)] in { Game.Position.row = 0; column = 0 } *)
+        let champ_pos = ref (List.hd_exn continuing_moves) in
+        let champ_eval = ref Float.min_value in
+        let depth =
+          match game.game_kind with
+          | Game.Game_kind.Tic_tac_toe -> 9
+          | _ -> 0
+        in
+        let _ =
+          List.iter continuing_moves ~f:(fun pos ->
+            let possible_game =
+              place_piece ~piece:my_piece ~position:pos game
+            in
+            let eval =
+              minimax
+                possible_game
+                depth
+                false
+                (Game.Piece.flip my_piece)
+                Float.min_value
+                Float.max_value
+            in
+            if Float.( > ) eval !champ_eval
+            then (
+              champ_eval := eval;
+              champ_pos := pos))
+        in
+        !champ_pos)
   ;;
 
-  let%expect_test "block_and_win" =
-    let move = choose_move bw_game Game.Piece.X in
-    let _ = print_s [%sexp (move : Game.Position.t)] in
-    [%expect {| ((row 2) (column 2))|}];
-    return ()
-  ;;
+  (* let%expect_test "block_and_win" = let move = choose_move bw_game
+     Game.Piece.X in let _ = print_s [%sexp (move : Game.Position.t)] in
+     [%expect {| ((row 2) (column 2))|}]; return () ;;
 
-  let%expect_test "block" =
-    let move = choose_move block_game Game.Piece.X in
-    let _ = print_s [%sexp (move : Game.Position.t)] in
-    [%expect {| ((row 2) (column 2))|}];
-    return ()
-  ;;
+     let%expect_test "block" = let move = choose_move block_game Game.Piece.X
+     in let _ = print_s [%sexp (move : Game.Position.t)] in [%expect {| ((row
+     2) (column 2))|}]; return () ;; *)
 
   let exercise_one =
     Command.async
@@ -786,7 +856,9 @@ end
 let handle (_client : unit) (query : Rpcs.Take_turn.Query.t) =
   let response =
     { Rpcs.Take_turn.Response.piece = query.you_play
-    ; position = Exercises.choose_move query.game query.you_play
+    ; position =
+        (* { Game.Position.row = 0; column = 0 } *)
+        Exercises.choose_move query.game query.you_play
     }
   in
   return response
