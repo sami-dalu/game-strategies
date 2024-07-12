@@ -12,8 +12,6 @@ module Exercises = struct
     { game with board }
   ;;
 
-  Map.add
-
   let win_for_x =
     let open Game in
     empty_game
@@ -45,6 +43,24 @@ module Exercises = struct
     |> place_piece ~piece:Piece.X ~position:{ Position.row = 2; column = 2 }
     |> place_piece ~piece:Piece.X ~position:{ Position.row = 3; column = 1 }
     |> place_piece ~piece:Piece.X ~position:{ Position.row = 4; column = 0 }
+  ;;
+
+  let bw_game =
+    let open Game in
+    empty_game
+    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 0 }
+    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
+    |> place_piece ~piece:Piece.X ~position:{ Position.row = 1; column = 1 }
+    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 1 }
+  ;;
+
+  let block_game =
+    let open Game in
+    empty_game
+    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 0 }
+    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
+    |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 2 }
+    |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 1 }
   ;;
 
   let print_game (game : Game.t) =
@@ -92,6 +108,34 @@ module Exercises = struct
       O |   | X
       |}];
     return ()
+  ;;
+
+  let get_diagonals r c offset (game : Game.t) =
+    match game.game_kind with
+    | Tic_tac_toe ->
+      [ Map.find game.board { Game.Position.row = r; column = c }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 1; column = c + offset }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 2; column = c + (2 * offset) }
+      ]
+    | Omok ->
+      [ Map.find game.board { Game.Position.row = r; column = c }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 1; column = c + offset }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 2; column = c + (2 * offset) }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 3; column = c + (3 * offset) }
+      ; Map.find
+          game.board
+          { Game.Position.row = r + 4; column = c + (4 * offset) }
+      ]
   ;;
 
   (* Exercise 1 *)
@@ -157,14 +201,16 @@ module Exercises = struct
          starts *)
       (* let _ = (if Game.Game_kind.equal game Game.Game_kind.Omok then
          printf "INDEX IS %d\n" index else print_string " ") in [p] *)
-      let find_streak (piece_arr : Game.Piece.t option array) game =
+      let find_streak
+        (piece_arr : Game.Piece.t option array)
+        desired_streak_length
+        =
         (* let _ = if Game.Game_kind.equal game Game.Game_kind.Omok then
            printf "length is %d\n" (Array.length piece_arr) in *)
         let streak_start =
           Array.mapi piece_arr ~f:(fun index p ->
             ( p
-            , index + Game.Game_kind.win_length game - 1
-              < Game.Game_kind.win_length game
+            , index + desired_streak_length - 1 < desired_streak_length
               && Option.is_some
                    (List.all_equal
                       ~equal:(fun p1 p2 ->
@@ -177,7 +223,7 @@ module Exercises = struct
                          (Array.slice
                             piece_arr
                             index
-                            (index + Game.Game_kind.win_length game)))) ))
+                            (index + desired_streak_length)))) ))
         in
         Array.find streak_start ~f:(fun (_p, b) -> b)
       in
@@ -195,7 +241,9 @@ module Exercises = struct
       let streak_row =
         List.find piece_grid ~f:(fun row_pieces ->
           Option.is_some
-            (find_streak (Array.of_list row_pieces) game.game_kind))
+            (find_streak
+               (Array.of_list row_pieces)
+               (Game.Game_kind.win_length game.game_kind)))
       in
       if Option.is_some streak_row
       then (
@@ -203,7 +251,7 @@ module Exercises = struct
           Option.value_exn
             (find_streak
                (Array.of_list (Option.value_exn streak_row))
-               game.game_kind)
+               (Game.Game_kind.win_length game.game_kind))
         in
         Game.Evaluation.Game_over { winner = p })
       else (
@@ -216,7 +264,9 @@ module Exercises = struct
         let streak_col =
           List.find columns ~f:(fun col_pieces ->
             Option.is_some
-              (find_streak (Array.of_list col_pieces) game.game_kind))
+              (find_streak
+                 (Array.of_list col_pieces)
+                 (Game.Game_kind.win_length game.game_kind)))
         in
         if Option.is_some streak_col
         then (
@@ -224,46 +274,22 @@ module Exercises = struct
             Option.value_exn
               (find_streak
                  (Array.of_list (Option.value_exn streak_col))
-                 game.game_kind)
+                 (Game.Game_kind.win_length game.game_kind))
           in
           Game.Evaluation.Game_over { winner = p2 })
         else (
-          let get_diagonals r c offset =
-            match game.game_kind with
-            | Tic_tac_toe ->
-              [ Map.find game.board { Game.Position.row = r; column = c }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 1; column = c + offset }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 2; column = c + (2 * offset) }
-              ]
-            | Omok ->
-              [ Map.find game.board { Game.Position.row = r; column = c }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 1; column = c + offset }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 2; column = c + (2 * offset) }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 3; column = c + (3 * offset) }
-              ; Map.find
-                  game.board
-                  { Game.Position.row = r + 4; column = c + (4 * offset) }
-              ]
-          in
           let coordinates =
             List.concat_map rows ~f:(fun r ->
               List.map cols ~f:(fun c -> r, c))
           in
           let diagonal_start_bl =
             List.find coordinates ~f:(fun (r, c) ->
-              let diagonal_list = get_diagonals r c (-1) in
+              let diagonal_list = get_diagonals r c (-1) game in
               let diagonal_array = List.to_array diagonal_list in
-              Option.is_some (find_streak diagonal_array game.game_kind))
+              Option.is_some
+                (find_streak
+                   diagonal_array
+                   (Game.Game_kind.win_length game.game_kind)))
           in
           if Option.is_some diagonal_start_bl
           then (
@@ -275,9 +301,12 @@ module Exercises = struct
           else (
             let diagonal_start_br =
               List.find coordinates ~f:(fun (r, c) ->
-                let diagonal_list = get_diagonals r c 1 in
+                let diagonal_list = get_diagonals r c 1 game in
                 let diagonal_array2 = List.to_array diagonal_list in
-                Option.is_some (find_streak diagonal_array2 game.game_kind))
+                Option.is_some
+                  (find_streak
+                     diagonal_array2
+                     (Game.Game_kind.win_length game.game_kind)))
             in
             if Option.is_some diagonal_start_br
             then (
@@ -326,6 +355,328 @@ module Exercises = struct
     List.filter (available_moves game) ~f:(fun pos ->
       List.is_empty
         (losing_moves ~me (place_piece ~position:pos ~piece:me game)))
+  ;;
+
+  let find_streaks
+    (piece_arr : Game.Piece.t option array)
+    desired_streak_length
+    =
+    (* let _ = if Game.Game_kind.equal game Game.Game_kind.Omok then printf
+       "length is %d\n" (Array.length piece_arr) in *)
+    let streak_start =
+      Array.mapi piece_arr ~f:(fun index p ->
+        ( p
+        , index + desired_streak_length - 1 < desired_streak_length
+          && Option.is_some
+               (List.all_equal
+                  ~equal:(fun p1 p2 ->
+                    Option.is_some p1
+                    && Option.is_some p2
+                    && Game.Piece.equal
+                         (Option.value_exn p1)
+                         (Option.value_exn p2))
+                  (List.of_array
+                     (Array.slice
+                        piece_arr
+                        index
+                        (index + desired_streak_length)))) ))
+    in
+    Array.filter streak_start ~f:(fun (_p, b) -> b)
+  ;;
+
+  let score (game : Game.t) my_piece =
+    match evaluate game with
+    | Game.Evaluation.Game_over { winner = Some w } ->
+      if Game.Piece.equal w my_piece
+      then Float.max_value
+      else Float.min_value
+    | _ ->
+      if not (List.is_empty (winning_moves ~me:my_piece game))
+      then Float.max_value -. 1.0
+      else if not (List.is_empty (losing_moves ~me:my_piece game))
+      then Float.min_value +. 1.0
+      else (
+        (* actual heuristic done (?) *)
+        (* let middle = {Game.Position.row = (Game.Game_kind.board_length
+           game.game_kind)/2; column = (Game.Game_kind.board_length
+           game.game_kind)/2} in let _ = if Option.is_none (Map.find
+           game.board middle) then modifier := !modifier + 2 in *)
+        (* let my_positions = List.filter (Map.keys game.board) ~f:(fun pos
+           -> Option.is_some (Map.find game.board pos) && Game.Piece.equal
+           (Option.value_exn (Map.find game.board pos)) my_piece) in *)
+        let rows =
+          List.range 0 (Game.Game_kind.board_length game.game_kind)
+        in
+        let cols =
+          List.range 0 (Game.Game_kind.board_length game.game_kind)
+        in
+        (* let value_list = List.map my_positions ~f:(fun ({Game.Position.row
+           = r; column = c}) -> let ) *)
+        let row_adj_vals =
+          List.map rows ~f:(fun r ->
+            let row =
+              List.map cols ~f:(fun c ->
+                Map.find game.board { Game.Position.row = r; column = c })
+            in
+            let lens =
+              List.range 2 (Game.Game_kind.win_length game.game_kind + 1)
+            in
+            let streak_len =
+              List.find (List.rev lens) ~f:(fun l ->
+                let possible_streaks = find_streaks (Array.of_list row) l in
+                let my_streaks =
+                  Array.filter possible_streaks ~f:(fun (p, _) ->
+                    Game.Piece.equal (Option.value_exn p) my_piece)
+                in
+                not (Array.is_empty my_streaks)
+                (* in not (Array.is_empty possible_streaks) && Array.exists
+                   possible_streaks ~f:(fun (p, _) -> Game.Piece.equal
+                   (Option.value_exn p) my_piece) *))
+            in
+            match streak_len with
+            | None -> 0
+            | _ ->
+              Option.value_exn streak_len
+              * Option.value_exn streak_len
+              * Int.of_float
+                  (sqrt
+                     (Float.of_int
+                        (List.length
+                           (List.filter row ~f:(fun p -> Option.is_none p)))))
+            (* possibly fine tune so that function doesn't just look for
+               highest l as it does rn bc of list.find (Array.length
+               my_streaks) * *))
+        in
+        let row_adj_score =
+          List.fold row_adj_vals ~init:0 ~f:(fun accum s -> accum + s)
+        in
+        let col_adj_vals =
+          List.map cols ~f:(fun c ->
+            let col =
+              List.map rows ~f:(fun r ->
+                Map.find game.board { Game.Position.row = r; column = c })
+            in
+            let lens =
+              List.range 2 (Game.Game_kind.win_length game.game_kind + 1)
+            in
+            let streak_len =
+              List.find (List.rev lens) ~f:(fun l ->
+                let possible_streaks = find_streaks (Array.of_list col) l in
+                let my_streaks =
+                  Array.filter possible_streaks ~f:(fun (p, _) ->
+                    Game.Piece.equal (Option.value_exn p) my_piece)
+                in
+                not (Array.is_empty my_streaks)
+                (* in not (Array.is_empty possible_streaks) && Array.exists
+                   possible_streaks ~f:(fun (p, _) -> Game.Piece.equal
+                   (Option.value_exn p) my_piece) *))
+            in
+            match streak_len with
+            | None -> 0
+            | _ ->
+              Option.value_exn streak_len
+              * Option.value_exn streak_len
+              * Int.of_float
+                  (sqrt
+                     (Float.of_int
+                        (List.length
+                           (List.filter col ~f:(fun p -> Option.is_none p)))))
+            (* possibly fine tune so that function doesn't just look for
+               highest l as it does rn bc of list.find (Array.length
+               my_streaks) * *))
+        in
+        let col_adj_score =
+          List.fold col_adj_vals ~init:0 ~f:(fun accum s -> accum + s)
+        in
+        let diag_bls_scores2d =
+          List.map rows ~f:(fun r ->
+            List.map cols ~f:(fun c ->
+              if r < 10 || c < 4
+              then 0
+              else (
+                let bl_diags = get_diagonals r c (-1) game in
+                let lens =
+                  List.range 2 (Game.Game_kind.win_length game.game_kind + 1)
+                in
+                let streak_len =
+                  List.find (List.rev lens) ~f:(fun l ->
+                    let possible_streaks =
+                      find_streaks (Array.of_list bl_diags) l
+                    in
+                    let my_streaks =
+                      Array.filter possible_streaks ~f:(fun (p, _) ->
+                        Game.Piece.equal (Option.value_exn p) my_piece)
+                    in
+                    not (Array.is_empty my_streaks)
+                    (* in not (Array.is_empty possible_streaks) &&
+                       Array.exists possible_streaks ~f:(fun (p, _) ->
+                       Game.Piece.equal (Option.value_exn p) my_piece) *))
+                in
+                match streak_len with
+                | None -> 0
+                | _ ->
+                  Option.value_exn streak_len
+                  * Option.value_exn streak_len
+                  * Int.of_float
+                      (sqrt
+                         (Float.of_int
+                            (List.length
+                               (List.filter bl_diags ~f:(fun p ->
+                                  Option.is_none p))))))))
+        in
+        let diag_bls_scores2d = List.concat diag_bls_scores2d in
+        let diag_bl_adj_score =
+          List.fold diag_bls_scores2d ~init:0 ~f:(fun accum s -> accum + s)
+        in
+        let diag_brs_scores2d =
+          List.map rows ~f:(fun r ->
+            List.map cols ~f:(fun c ->
+              if r < 10 || c < 10
+              then 0
+              else (
+                let br_diags = get_diagonals r c 1 game in
+                let lens =
+                  List.range 2 (Game.Game_kind.win_length game.game_kind + 1)
+                in
+                let streak_len =
+                  List.find (List.rev lens) ~f:(fun l ->
+                    let possible_streaks =
+                      find_streaks (Array.of_list br_diags) l
+                    in
+                    let my_streaks =
+                      Array.filter possible_streaks ~f:(fun (p, _) ->
+                        Game.Piece.equal (Option.value_exn p) my_piece)
+                    in
+                    not (Array.is_empty my_streaks)
+                    (* in not (Array.is_empty possible_streaks) &&
+                       Array.exists possible_streaks ~f:(fun (p, _) ->
+                       Game.Piece.equal (Option.value_exn p) my_piece) *))
+                in
+                match streak_len with
+                | None -> 0
+                | _ ->
+                  Option.value_exn streak_len
+                  * Option.value_exn streak_len
+                  * Int.of_float
+                      (sqrt
+                         (Float.of_int
+                            (List.length
+                               (List.filter br_diags ~f:(fun p ->
+                                  Option.is_none p))))))))
+        in
+        let diag_brs_scores = List.concat diag_brs_scores2d in
+        let diag_br_adj_score =
+          List.fold diag_brs_scores ~init:0 ~f:(fun accum s -> accum + s)
+        in
+        Float.of_int
+          (row_adj_score
+           + col_adj_score
+           + diag_bl_adj_score
+           + diag_br_adj_score))
+  ;;
+
+  let rec minimax
+    (game : Game.t)
+    (depth : int)
+    (maximizing_player : bool)
+    (me : Game.Piece.t)
+    =
+    (* doesn't work with illegal moves *)
+    let game_continuing =
+      match evaluate game with
+      | Game.Evaluation.Game_over { winner = _ } -> false
+      | _ -> true
+    in
+    let considered_moves =
+      available_moves_that_do_not_immediately_lose ~me game
+    in
+    if depth = 0 || not game_continuing
+    then score game me
+    else if maximizing_player
+    then (
+      let max_val = ref Float.min_value in
+      let _ =
+        List.iter considered_moves ~f:(fun pos ->
+          let possible_board1 = place_piece ~piece:me ~position:pos game in
+          let eval1 =
+            minimax
+              possible_board1
+              (depth - 1)
+              (not maximizing_player)
+              (Game.Piece.flip me)
+          in
+          max_val := Float.max eval1 !max_val)
+        (* let opt_val = List.max_elt considered_moves ~compare:(fun pos1
+           pos2 -> let possible_board1 = place_piece ~piece:(me)
+           ~position:(pos1) game in let eval1 = minimax possible_board1
+           (depth-1) (not maximizing_player) (Game.Piece.flip me) in let
+           possible_board2 = place_piece ~piece:(me) ~position:(pos2) game in
+           let eval2 = minimax possible_board2 (depth-1) (not
+           maximizing_player) (Game.Piece.flip me) in if (Float.(>.) eval1
+           eval2) then 1 else if Float.(<.) eval1 eval2 then -1 else 0 ) *)
+      in
+      !max_val
+      (* match opt_val with | None -> Float.min_value | _ -> Option.value_exn
+         opt_val *))
+    else (
+      let min_val = ref Float.max_value in
+      let _ =
+        List.iter considered_moves ~f:(fun pos ->
+          let possible_board1 = place_piece ~piece:me ~position:pos game in
+          let eval1 =
+            minimax
+              possible_board1
+              (depth - 1)
+              (not maximizing_player)
+              (Game.Piece.flip me)
+          in
+          min_val := Float.min eval1 !min_val)
+      in
+      !min_val)
+  ;;
+
+  let choose_move game my_piece =
+    let considered_moves =
+      available_moves_that_do_not_immediately_lose ~me:my_piece game
+    in
+    if List.is_empty considered_moves
+    then List.hd_exn (available_moves game)
+    else if not (List.is_empty (winning_moves game ~me:my_piece))
+    then List.hd_exn (winning_moves game ~me:my_piece)
+    else (
+      let champ_pos = ref (List.hd_exn considered_moves) in
+      let champ_eval = ref Float.min_value in
+      let depth =
+        match game.game_kind with Game.Game_kind.Tic_tac_toe -> 9 | _ -> 2
+      in
+      let _ =
+        List.iter considered_moves ~f:(fun pos ->
+          let possible_game =
+            place_piece ~piece:my_piece ~position:pos game
+          in
+          let eval =
+            minimax possible_game depth false (Game.Piece.flip my_piece)
+          in
+          if Float.( > ) eval !champ_eval
+          then (
+            champ_eval := Float.max !champ_eval eval;
+            champ_pos := pos))
+      in
+      !champ_pos)
+  ;;
+
+  let%expect_test "block_and_win" =
+    let move = choose_move bw_game Game.Piece.X in
+    let _ = print_s [%sexp (move : Game.Position.t)] in
+    [%expect {| ((row 2) (column 2))|}];
+    return ()
+  ;;
+
+  let%expect_test "block" =
+    let move = choose_move block_game Game.Piece.X in
+    let _ = print_s [%sexp (move : Game.Position.t)] in
+    [%expect {| ((row 2) (column 2))|}];
+    return ()
   ;;
 
   let exercise_one =
@@ -430,10 +781,13 @@ module Echo = struct
     [@@deriving sexp_of, bin_io]
   end
 end
+(* edit *)
 
-let handle (_client : unit) (_query : Rpcs.Take_turn.Query.t) =
+let handle (_client : unit) (query : Rpcs.Take_turn.Query.t) =
   let response =
-    { Rpcs.Take_turn.Response.piece = X; position = { row = 0; column = 0 } }
+    { Rpcs.Take_turn.Response.piece = query.you_play
+    ; position = Exercises.choose_move query.game query.you_play
+    }
   in
   return response
 ;;
